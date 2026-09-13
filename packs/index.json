@@ -12,16 +12,6 @@
       "attributionUrl": "https://kaikki.org/dictionary/downloads/ko/ko-extract.jsonl.gz"
     },
     {
-      "id": "ja-en",
-      "sourceLanguage": "ja",
-      "targetLanguage": "en",
-      "version": "2026.09.13",
-      "url": "https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs%2Fja-en-2026.09.13/voicecamera-ja-en-2026.09.13.zip",
-      "sha256": "25f19fcf77f37db30f2e9ce82e364779bdb0928abb253e07d0c8e27344bed38b",
-      "license": "CC-BY-SA-4.0",
-      "attributionUrl": "https://kaikki.org/dictionary/downloads/ja/ja-extract.jsonl.gz"
-    },
-    {
       "id": "es-en",
       "sourceLanguage": "es",
       "targetLanguage": "en",
@@ -30,6 +20,17 @@
       "sha256": "8566c6ef981ce7671ee607902b3b4879be6a0b4d0534f4b97b84a5e936e07cfc",
       "license": "CC-BY-SA-4.0",
       "attributionUrl": "https://kaikki.org/dictionary/downloads/es/es-extract.jsonl.gz"
+    },
+    {
+      "id": "en-ja",
+      "sourceLanguage": "en",
+      "targetLanguage": "ja",
+      "version": "2026.09.13",
+      "url": "https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs/en-ja-2026.09.13/voicecamera-en-ja-2026.09.13.tar.gz",
+      "sha256": "7fa5a8fe89b21d46ca983591d84e259efdbc2e4c2d2f7304dd8d4459491c08ac",
+      "entryCount": 35738,
+      "license": "CC BY-SA 4.0",
+      "attribution": "Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.txt."
     }
   ]
 }
