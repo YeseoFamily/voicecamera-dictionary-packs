@@ -1,0 +1,15 @@
+{
+  "format": "voicecamera.dictionary-packs.v1",
+  "packs": [
+    {
+      "id": "en-ko",
+      "sourceLanguage": "en",
+      "targetLanguage": "ko",
+      "version": "2026.09.13",
+      "url": "https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs%2Fen-ko-2026.09.13/voicecamera-en-ko-2026.09.13.zip",
+      "sha256": "053889b3c678130bbb3ff9bfc81d8b641796457d78fe469040aedac114d19c11",
+      "license": "CC-BY-SA-4.0",
+      "attributionUrl": "https://kaikki.org/dictionary/downloads/ko/ko-extract.jsonl.gz"
+    }
+  ]
+}
