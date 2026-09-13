@@ -1,10 +1,10 @@
-name: Build language dictionary pack
+name: Build English dictionary pack
 
 on:
   workflow_dispatch:
     inputs:
       language:
-        description: Source language for the English glossary pack
+        description: Target learner language
         required: true
         type: choice
         options: [ja, es]
@@ -23,66 +23,112 @@ jobs:
         run: |
           set -euo pipefail
           case "$LANGUAGE" in
-            ja) SOURCE_URL=https://kaikki.org/dictionary/downloads/ja/ja-extract.jsonl.gz; PATTERN='^[ぁ-んァ-ヶー々〆〤一-龯]{1,32}$' ;;
-            es) SOURCE_URL=https://kaikki.org/dictionary/downloads/es/es-extract.jsonl.gz; PATTERN='^[a-záéíóúüñ-]{2,48}$' ;;
+            ja) SOURCE_URL=https://kaikki.org/dictionary/downloads/ja/ja-extract.jsonl.gz; TARGET_PATTERN='^[ぁ-んァ-ヶー々〆〤一-龯]{1,32}$' ;;
+            es) SOURCE_URL=https://kaikki.org/dictionary/downloads/es/es-extract.jsonl.gz; TARGET_PATTERN='^[a-záéíóúüñ-]{2,48}$' ;;
           esac
           VERSION=$(date -u +%Y.%m.%d)
           mkdir -p build/pack
           curl --fail --location --retry 3 --retry-all-errors --output build/source.jsonl.gz "$SOURCE_URL"
           gzip -t build/source.jsonl.gz
           SOURCE_SHA=$(sha256sum build/source.jsonl.gz | awk '{print $1}')
-          LANGUAGE="$LANGUAGE" PATTERN="$PATTERN" VERSION="$VERSION" SOURCE_URL="$SOURCE_URL" SOURCE_SHA="$SOURCE_SHA" python3 - <<'PY'
+          LANGUAGE="$LANGUAGE" TARGET_PATTERN="$TARGET_PATTERN" VERSION="$VERSION" SOURCE_URL="$SOURCE_URL" SOURCE_SHA="$SOURCE_SHA" python3 - <<'PY'
           import gzip, hashlib, json, os, re
           from collections import defaultdict
-          lang=os.environ['LANGUAGE']; pattern=re.compile(os.environ['PATTERN'])
-          values=defaultdict(list); metadata={}
-          with gzip.open('build/source.jsonl.gz','rt',encoding='utf-8') as source:
+
+          language = os.environ['LANGUAGE']
+          target_pattern = re.compile(os.environ['TARGET_PATTERN'], re.I)
+          english_pattern = re.compile(r"^[a-z][a-z '-]{0,47}$", re.I)
+          values = defaultdict(list)
+
+          with gzip.open('build/source.jsonl.gz', 'rt', encoding='utf-8') as source:
               for line in source:
-                  record=json.loads(line); word=str(record.get('word','')).strip().lower()
-                  if record.get('lang_code') != lang or not pattern.fullmatch(word): continue
-                  for sense in record.get('senses',[]):
-                      for gloss in sense.get('glosses',[]):
-                          gloss=str(gloss).strip()
-                          if gloss and gloss not in values[word]: values[word].append(gloss)
-                  if word not in metadata:
-                      metadata[word]={'partOfSpeech':record.get('pos_title')}
-                      for sound in record.get('sounds',[]):
-                          if sound.get('ipa'): metadata[word]['phonetic']=sound['ipa']; break
-          entries={word:{**metadata[word],'glosses':glosses[:4]} for word,glosses in sorted(values.items()) if glosses}
-          payload={'format':f'voicecamera.{lang}-en.kaikki.v1','entries':entries}
-          with open('build/pack/dictionary.json','w',encoding='utf-8') as out: json.dump(payload,out,ensure_ascii=False,separators=(',',':'))
-          digest=hashlib.sha256(open('build/pack/dictionary.json','rb').read()).hexdigest()
-          manifest={'format':payload['format'],'license':'CC-BY-SA-4.0','source':f'Kaikki.org {lang} Wiktionary extraction','sourceUrl':os.environ['SOURCE_URL'],'sourceSha256':os.environ['SOURCE_SHA'],'outputSha256':digest,'entryCount':len(entries),'version':os.environ['VERSION'],'generator':'build-language-packs.yml'}
-          with open('build/pack/manifest.json','w',encoding='utf-8') as out: json.dump(manifest,out,ensure_ascii=False,sort_keys=True,indent=2); out.write('\n')
+                  try:
+                      record = json.loads(line)
+                  except json.JSONDecodeError:
+                      continue
+                  target_word = str(record.get('word', '')).strip().lower()
+                  if not target_pattern.fullmatch(target_word):
+                      continue
+                  for sense in record.get('senses', []):
+                      for gloss in sense.get('glosses', []):
+                          english_word = str(gloss).strip().lower()
+                          if english_pattern.fullmatch(english_word) and target_word not in values[english_word]:
+                              values[english_word].append(target_word)
+
+          entries = {word: {'glosses': glosses[:4]} for word, glosses in values.items()}
+          if len(entries) < 1000:
+              raise SystemExit(f'Only {len(entries)} English entries passed validation')
+
+          payload = {
+              'format': f'voicecamera.en-{language}.kaikki.v1',
+              'entries': entries,
+          }
+          raw = json.dumps(payload, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+          with open('build/pack/dictionary.json', 'wb') as output:
+              output.write(raw)
+          checksum = hashlib.sha256(raw).hexdigest()
+          manifest = {
+              'id': f'en-{language}',
+              'sourceLanguage': 'en',
+              'targetLanguage': language,
+              'version': os.environ['VERSION'],
+              'format': payload['format'],
+              'entryCount': len(entries),
+              'dictionarySha256': checksum,
+              'source': {
+                  'name': 'Kaikki.org Wiktionary JSONL',
+                  'url': os.environ['SOURCE_URL'],
+                  'sha256': os.environ['SOURCE_SHA'],
+              },
+          }
+          with open('build/pack/manifest.json', 'w', encoding='utf-8') as output:
+              json.dump(manifest, output, ensure_ascii=False, indent=2)
           PY
-          cat > build/pack/NOTICE.md <<EOF
-          Dictionary data derived from Kaikki.org/Wiktionary. Modified and distributed under CC BY-SA 4.0. Source, output and archive checksums are recorded in the manifest and release notes.
-          EOF
-          curl --fail --location --output build/pack/LICENSE-CC-BY-SA-4.0.txt https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt
-          mv build/pack "build/voicecamera-$LANGUAGE-en-$VERSION"
-          (cd build && zip -qr "voicecamera-$LANGUAGE-en-$VERSION.zip" "voicecamera-$LANGUAGE-en-$VERSION")
-          echo "LANGUAGE=$LANGUAGE" >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "ASSET=build/voicecamera-$LANGUAGE-en-$VERSION.zip" >> "$GITHUB_ENV"
-      - name: Publish immutable release
+          cp LICENSE.txt build/pack/LICENSE.txt
+          cp NOTICE.txt build/pack/NOTICE.txt
+          tar -C build/pack -czf "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" dictionary.json manifest.json LICENSE.txt NOTICE.txt
+          sha256sum "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" > "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz.sha256"
+      - name: Update catalog
         env:
-          GH_TOKEN: ${{ github.token }}
+          LANGUAGE: ${{ inputs.language }}
         run: |
           set -euo pipefail
-          SHA=$(sha256sum "$ASSET" | awk '{print $1}')
-          TAG="packs/$LANGUAGE-en-$VERSION"
-          printf 'Source: Kaikki.org/Wiktionary\nLicense: CC BY-SA 4.0\nSHA-256: %s\n' "$SHA" > build/release-notes.md
-          gh release create "$TAG" "$ASSET" --title "$LANGUAGE → English pack $VERSION" --notes-file build/release-notes.md
-          LANGUAGE="$LANGUAGE" VERSION="$VERSION" TAG="$TAG" ASSET="$(basename "$ASSET")" SHA="$SHA" python3 - <<'PY'
-          import json, os, urllib.parse
-          path='packs/index.json'
-          data=json.load(open(path,encoding='utf-8'))
-          lang=os.environ['LANGUAGE']; pack={'id':f'{lang}-en','sourceLanguage':lang,'targetLanguage':'en','version':os.environ['VERSION'],'url':f"https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/{urllib.parse.quote(os.environ['TAG'],safe='')}/{os.environ['ASSET']}",'sha256':os.environ['SHA'],'license':'CC-BY-SA-4.0','attributionUrl':f'https://kaikki.org/dictionary/downloads/{lang}/{lang}-extract.jsonl.gz'}
-          data['packs']=[item for item in data['packs'] if item['id'] != pack['id']] + [pack]
-          with open(path,'w',encoding='utf-8') as out: json.dump(data,out,ensure_ascii=False,indent=2); out.write('\n')
+          LANGUAGE="$LANGUAGE" python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          language = os.environ['LANGUAGE']
+          manifest = json.loads(Path('build/pack/manifest.json').read_text(encoding='utf-8'))
+          archive = next(Path('build').glob(f'voicecamera-en-{language}-*.tar.gz'))
+          pack = {
+              'id': f'en-{language}',
+              'sourceLanguage': 'en',
+              'targetLanguage': language,
+              'version': manifest['version'],
+              'url': f'https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs/en-{language}-{manifest["version"]}/{archive.name}',
+              'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
+              'entryCount': manifest['entryCount'],
+              'license': 'CC BY-SA 4.0',
+              'attribution': 'Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.txt.',
+          }
+          path = Path('packs/index.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          ids_to_replace = {f'en-{language}', f'{language}-en'}
+          data['packs'] = [item for item in data.get('packs', []) if item.get('id') not in ids_to_replace]
+          data['packs'].append(pack)
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add packs/index.json
-          git commit -m "feat: publish $LANGUAGE-en dictionary pack $VERSION"
+          git commit -m "chore: publish en-$LANGUAGE dictionary pack" || true
           git push
+      - name: Create release
+        env:
+          LANGUAGE: ${{ inputs.language }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(python3 -c "import json; print(json.load(open('build/pack/manifest.json'))['version'])")
+          TAG="packs/en-$LANGUAGE-$VERSION"
+          gh release create "$TAG" "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz.sha256" --title "English → $LANGUAGE dictionary pack $VERSION" --notes "English-to-$LANGUAGE dictionary pack derived from Kaikki.org/Wiktionary data. See the bundled NOTICE.txt and LICENSE.txt."
