@@ -65,6 +65,8 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "ASSET=build/voicecamera-$LANGUAGE-en-$VERSION.zip" >> "$GITHUB_ENV"
       - name: Publish immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           SHA=$(sha256sum "$ASSET" | awk '{print $1}')
