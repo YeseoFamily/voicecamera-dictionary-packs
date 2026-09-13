@@ -75,8 +75,10 @@ jobs:
           with open('build/pack/manifest.json', 'w', encoding='utf-8') as output:
               json.dump(manifest, output, ensure_ascii=False, indent=2)
           PY
-          cp LICENSE.txt build/pack/LICENSE.txt
-          cp NOTICE.txt build/pack/NOTICE.txt
+          cat > build/pack/NOTICE.md <<'EOF'
+          Dictionary data derived from Kaikki.org/Wiktionary. Modified and distributed under CC BY-SA 4.0. Source and output checksums are recorded in the manifest and release notes.
+          EOF
+          curl --fail --location --output build/pack/LICENSE-CC-BY-SA-4.0.txt https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt
           tar -C build/pack -czf "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" dictionary.json manifest.json LICENSE.txt NOTICE.txt
           sha256sum "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" > "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz.sha256"
       - name: Update catalog
