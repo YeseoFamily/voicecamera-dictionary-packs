@@ -79,7 +79,7 @@ jobs:
           Dictionary data derived from Kaikki.org/Wiktionary. Modified and distributed under CC BY-SA 4.0. Source and output checksums are recorded in the manifest and release notes.
           EOF
           curl --fail --location --output build/pack/LICENSE-CC-BY-SA-4.0.txt https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt
-          tar -C build/pack -czf "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" dictionary.json manifest.json LICENSE.txt NOTICE.txt
+          tar -C build/pack -czf "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" dictionary.json manifest.json LICENSE-CC-BY-SA-4.0.txt NOTICE.md
           sha256sum "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz" > "build/voicecamera-en-$LANGUAGE-$VERSION.tar.gz.sha256"
       - name: Update catalog
         env:
