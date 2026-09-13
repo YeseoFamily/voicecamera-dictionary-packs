@@ -17,10 +17,10 @@
       "targetLanguage": "ja",
       "version": "2026.09.13",
       "url": "https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs/en-ja-2026.09.13/voicecamera-en-ja-2026.09.13.tar.gz",
-      "sha256": "05d31e48d1d8d204a0f61486123c9bc28fda597349e227c814e29f4bbd62a8f3",
+      "sha256": "7fa5a8fe89b21d46ca983591d84e259efdbc2e4c2d2f7304dd8d4459491c08ac",
       "entryCount": 35738,
       "license": "CC BY-SA 4.0",
-      "attribution": "Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.txt."
+      "attribution": "Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.md."
     },
     {
       "id": "en-es",
@@ -31,7 +31,7 @@
       "sha256": "849be05d2a7f90509bde4afcf1db526fc412cb82bb2b972da97b1ae675b4c153",
       "entryCount": 47253,
       "license": "CC BY-SA 4.0",
-      "attribution": "Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.txt."
+      "attribution": "Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.md."
     }
   ]
 }
