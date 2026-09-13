@@ -15,6 +15,7 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - name: Download, validate, and generate pack
@@ -23,9 +24,10 @@ jobs:
         run: |
           set -euo pipefail
           case "$LANGUAGE" in
-            ja) SOURCE_URL=https://kaikki.org/dictionary/downloads/ja/ja-extract.jsonl.gz; TARGET_PATTERN='^[ぁ-んァ-ヶー々〆〤一-龯]{1,32}$' ;;
-            es) SOURCE_URL=https://kaikki.org/dictionary/downloads/es/es-extract.jsonl.gz; TARGET_PATTERN='^[a-záéíóúüñ-]{2,48}$' ;;
+            ja) TARGET_PATTERN='^[ぁ-んァ-ヶー々〆〤一-龯]{1,32}$' ;;
+            es) TARGET_PATTERN='^[a-záéíóúüñ-]{2,48}$' ;;
           esac
+          SOURCE_URL=https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
           VERSION=$(date -u +%Y.%m.%d)
           mkdir -p build/pack
           curl --fail --location --retry 3 --retry-all-errors --output build/source.jsonl.gz "$SOURCE_URL"
@@ -46,40 +48,29 @@ jobs:
                       record = json.loads(line)
                   except json.JSONDecodeError:
                       continue
-                  target_word = str(record.get('word', '')).strip().lower()
-                  if not target_pattern.fullmatch(target_word):
+                  english_word = str(record.get('word', '')).strip().lower()
+                  if record.get('lang_code') != 'en' or not english_pattern.fullmatch(english_word):
                       continue
-                  for sense in record.get('senses', []):
-                      for gloss in sense.get('glosses', []):
-                          english_word = str(gloss).strip().lower()
-                          if english_pattern.fullmatch(english_word) and target_word not in values[english_word]:
-                              values[english_word].append(target_word)
+                  for translation in record.get('translations', []):
+                      target_word = str(translation.get('word', '')).strip().lower()
+                      if translation.get('code') != language or not target_pattern.fullmatch(target_word):
+                          continue
+                      if target_word not in values[english_word]:
+                          values[english_word].append(target_word)
 
-          entries = {word: {'glosses': glosses[:4]} for word, glosses in values.items()}
-          if len(entries) < 1000:
+          entries = {word: {'glosses': translations[:4]} for word, translations in values.items()}
+          if len(entries) < 5000:
               raise SystemExit(f'Only {len(entries)} English entries passed validation')
 
-          payload = {
-              'format': f'voicecamera.en-{language}.kaikki.v1',
-              'entries': entries,
-          }
+          payload = {'format': f'voicecamera.en-{language}.kaikki.v1', 'entries': entries}
           raw = json.dumps(payload, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
           with open('build/pack/dictionary.json', 'wb') as output:
               output.write(raw)
-          checksum = hashlib.sha256(raw).hexdigest()
           manifest = {
-              'id': f'en-{language}',
-              'sourceLanguage': 'en',
-              'targetLanguage': language,
-              'version': os.environ['VERSION'],
-              'format': payload['format'],
-              'entryCount': len(entries),
-              'dictionarySha256': checksum,
-              'source': {
-                  'name': 'Kaikki.org Wiktionary JSONL',
-                  'url': os.environ['SOURCE_URL'],
-                  'sha256': os.environ['SOURCE_SHA'],
-              },
+              'id': f'en-{language}', 'sourceLanguage': 'en', 'targetLanguage': language,
+              'version': os.environ['VERSION'], 'format': payload['format'],
+              'entryCount': len(entries), 'dictionarySha256': hashlib.sha256(raw).hexdigest(),
+              'source': {'name': 'Kaikki.org English Wiktionary JSONL', 'url': os.environ['SOURCE_URL'], 'sha256': os.environ['SOURCE_SHA']},
           }
           with open('build/pack/manifest.json', 'w', encoding='utf-8') as output:
               json.dump(manifest, output, ensure_ascii=False, indent=2)
@@ -96,19 +87,15 @@ jobs:
           LANGUAGE="$LANGUAGE" python3 - <<'PY'
           import hashlib, json, os
           from pathlib import Path
-
           language = os.environ['LANGUAGE']
           manifest = json.loads(Path('build/pack/manifest.json').read_text(encoding='utf-8'))
           archive = next(Path('build').glob(f'voicecamera-en-{language}-*.tar.gz'))
           pack = {
-              'id': f'en-{language}',
-              'sourceLanguage': 'en',
-              'targetLanguage': language,
+              'id': f'en-{language}', 'sourceLanguage': 'en', 'targetLanguage': language,
               'version': manifest['version'],
               'url': f'https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs/en-{language}-{manifest["version"]}/{archive.name}',
               'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
-              'entryCount': manifest['entryCount'],
-              'license': 'CC BY-SA 4.0',
+              'entryCount': manifest['entryCount'], 'license': 'CC BY-SA 4.0',
               'attribution': 'Derived from Kaikki.org/Wiktionary data; see bundled NOTICE.txt.',
           }
           path = Path('packs/index.json')
