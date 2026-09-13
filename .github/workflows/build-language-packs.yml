@@ -28,7 +28,7 @@ jobs:
             es) TARGET_PATTERN='^[a-záéíóúüñ-]{2,48}$' ;;
           esac
           SOURCE_URL=https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
-          VERSION=$(date -u +%Y.%m.%d)
+          VERSION="$(date -u +%Y.%m.%d).$GITHUB_RUN_NUMBER"
           mkdir -p build/pack
           curl --fail --location --retry 3 --retry-all-errors --output build/source.jsonl.gz "$SOURCE_URL"
           gzip -t build/source.jsonl.gz
