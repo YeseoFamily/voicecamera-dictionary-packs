@@ -20,6 +20,16 @@
       "sha256": "25f19fcf77f37db30f2e9ce82e364779bdb0928abb253e07d0c8e27344bed38b",
       "license": "CC-BY-SA-4.0",
       "attributionUrl": "https://kaikki.org/dictionary/downloads/ja/ja-extract.jsonl.gz"
+    },
+    {
+      "id": "es-en",
+      "sourceLanguage": "es",
+      "targetLanguage": "en",
+      "version": "2026.09.13",
+      "url": "https://github.com/YeseoFamily/voicecamera-dictionary-packs/releases/download/packs%2Fes-en-2026.09.13/voicecamera-es-en-2026.09.13.zip",
+      "sha256": "8566c6ef981ce7671ee607902b3b4879be6a0b4d0534f4b97b84a5e936e07cfc",
+      "license": "CC-BY-SA-4.0",
+      "attributionUrl": "https://kaikki.org/dictionary/downloads/es/es-extract.jsonl.gz"
     }
   ]
 }
